@@ -145,9 +145,9 @@ uint32_t xchacha_random(const unsigned char* number_only_used_once, const unsign
 	return h_value;
 }
 
-void minesweeper_start(std::vector<mine> &tiles, uint32_t x_tiles, uint32_t y_tiles, uint64_t mine_count) {
+void minesweeper_start(std::vector<mine>& tiles, uint32_t x_tiles, uint32_t y_tiles, uint64_t mine_count) {
 	uint64_t total_tiles = (x_tiles * y_tiles);
-	
+
 	tiles.clear();
 	tiles.reserve(total_tiles); //largest size
 
@@ -159,10 +159,10 @@ void minesweeper_start(std::vector<mine> &tiles, uint32_t x_tiles, uint32_t y_ti
 	}
 
 	uint64_t timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
-	std::array<uint32_t, (crypto_stream_xchacha20_NONCEBYTES/4) + 1> nonce = {};
-	std::memcpy(nonce.data(), &timestamp, std::min(sizeof(timestamp),sizeof(nonce)));
+	std::array<uint32_t, (crypto_stream_xchacha20_NONCEBYTES / 4) + 1> nonce = {};
+	std::memcpy(nonce.data(), &timestamp, std::min(sizeof(timestamp), sizeof(nonce)));
 
-	std::array<uint32_t, (crypto_stream_xchacha20_KEYBYTES/4) + 1> key = {};
+	std::array<uint32_t, (crypto_stream_xchacha20_KEYBYTES / 4) + 1> key = {};
 	randombytes_buf(key.data(), sizeof(key));
 
 	for (size_t i = 0; i < total_tiles; i++) {
@@ -174,7 +174,7 @@ void minesweeper_start(std::vector<mine> &tiles, uint32_t x_tiles, uint32_t y_ti
 
 	// random permutation
 	for (size_t i = 0; i < total_tiles; i++) {
-		uint32_t limit = (~uint32_t{ 0 } - ((total_tiles-i) - 1));
+		uint32_t limit = (~uint32_t{ 0 } - ((total_tiles - i) - 1));
 		uint32_t limit_d = limit / (total_tiles - i);
 		uint32_t limit_r = limit % (total_tiles - i);
 
@@ -186,7 +186,7 @@ void minesweeper_start(std::vector<mine> &tiles, uint32_t x_tiles, uint32_t y_ti
 			crypto_stream_xchacha20((unsigned char*)&sample, sizeof(sample), (const unsigned char*)nonce.data(), (const unsigned char*)key.data());
 			nonce[0] += 1;
 
-			m = uint64_t{ sample } * uint64_t{ total_tiles };
+			m = uint64_t{ sample } *uint64_t{ total_tiles };
 			h_value = m >> 32;     // high part of m
 			l_value = uint32_t(m); // low part of m
 		} while (l_value < limit_r); // discard out of bounds 
@@ -195,7 +195,7 @@ void minesweeper_start(std::vector<mine> &tiles, uint32_t x_tiles, uint32_t y_ti
 	}
 }
 
-void minesweeper_swap_to_empty_tile(std::vector<mine>& tiles, std::vector<uint32_t> &idxs, uint32_t tile) {
+void minesweeper_swap_to_empty_tile(std::vector<mine>& tiles, std::vector<uint32_t>& idxs, uint32_t tile) {
 	idxs.clear();
 	if (tile >= tiles.size())
 		return;
@@ -251,7 +251,7 @@ void minesweeper_neighbors_2d(std::vector<mine>& tiles, uint32_t x_tiles, uint32
 
 	for (size_t i = 0; i < tiles.size(); i++) {
 		tiles[i].nearby = 0;
-		offset position = {i % x_tiles, i / x_tiles};
+		offset position = { i % x_tiles, i / x_tiles };
 		for (size_t o = 0; o < offsets.size(); o++) {
 			offset test_position = { position.x + offsets[o].x, position.y + offsets[o].y };
 			uint32_t test_idx = test_position.y * x_tiles + test_position.x;
@@ -319,7 +319,7 @@ void minesweeper_reveal(std::vector<mine>& tiles, std::vector<uint32_t>& idxs, u
 		}
 
 		uint32_t tile_y = tile / x_tiles;
-		for (size_t idx = tile+1; idx < tiles.size(); idx++) {
+		for (size_t idx = tile + 1; idx < tiles.size(); idx++) {
 			{
 				uint32_t idx_y = idx / x_tiles;
 				if (idx_y != tile_y)
@@ -362,7 +362,7 @@ void minesweeper_reveal(std::vector<mine>& tiles, std::vector<uint32_t>& idxs, u
 
 		wall_above = true;
 		wall_below = true;
-		for (size_t idx = tile-1; idx < tiles.size(); idx--) {
+		for (size_t idx = tile - 1; idx < tiles.size(); idx--) {
 			{
 				uint32_t idx_y = idx / x_tiles;
 				if (idx_y != tile_y)
@@ -447,6 +447,9 @@ int main(int argc, char** argv)
 	ImU32 hover_red = ImU32{ 0xff2828f2 };
 	ImU32 hover_black = ImU32{ 0xff090909 };
 
+	bool has_won = false;
+	bool has_lost = false;
+
 	uint64_t timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
 
 	while (!glfwWindowShouldClose(r.window))
@@ -506,7 +509,7 @@ int main(int argc, char** argv)
 
 				bool hovering_over_tile = ImGui::IsMouseHoveringRect(top_left, btm_right);
 
-				uint16_t &flags = tiles[i].flags;
+				uint16_t& flags = tiles[i].flags;
 				if (right_clicked && hovering_over_tile && (flags & (uint16_t)mine_flag::hidden)) {
 					flags ^= (uint16_t)mine_flag::flagged;
 				}
@@ -533,7 +536,8 @@ int main(int argc, char** argv)
 
 					draw_list->AddRectFilled(top_left, btm_right, color);
 
-				} else {
+				}
+				else {
 					ImU32 color = (flags & (uint16_t)mine_flag::hidden) ? gray : dark_gray;
 					color = ((flags & (uint16_t)mine_flag::flagged) && (flags & (uint16_t)mine_flag::hidden)) ? red : color;
 					color = (flags & (uint16_t)mine_flag::mine && !(flags & (uint16_t)mine_flag::hidden)) ? black : color;
@@ -543,7 +547,7 @@ int main(int argc, char** argv)
 
 				char txt[2] = { tiles[i].nearby + '0', 0 };
 				if (!(flags & (uint16_t)mine_flag::hidden) && tiles[i].nearby) {
-					draw_list->AddText(ImVec2{ (top_left.x + btm_right.x) / 2.0f, (top_left.y + btm_right.y) / 2.0f}, ImU32{0xffffffff}, (const char*)&txt[0], (const char*)&txt[1]);
+					draw_list->AddText(ImVec2{ (top_left.x + btm_right.x) / 2.0f, (top_left.y + btm_right.y) / 2.0f }, ImU32{ 0xffffffff }, (const char*)&txt[0], (const char*)&txt[1]);
 				}
 			}
 
@@ -554,82 +558,58 @@ int main(int argc, char** argv)
 				mines_revealed += !is_hidden(tiles[i]) && is_mine(tiles[i]);
 			}
 
-			bool has_won = mines_revealed > 0;
-			bool has_lost = !has_won && ((tiles.size() - shown) == mines);
-			if (ImGui::BeginPopupModal("You Lose!", &has_lost)) {
-				// you lose!
-				if (ImGui::Button("Easy")) {
-					losses++;
-					tries++;
+			has_lost = mines_revealed > 0;
+			has_won = !has_lost && ((tiles.size() - shown) == mines);
+			
+			if (has_won || has_lost) {
+				const char* text = has_won ? "You Won!" : "You Lost!";
+				ImGui::OpenPopup(text);
+				if (ImGui::BeginPopupModal(text)) {
+					if (ImGui::Button("Easy")) {
+						losses += has_lost;
+						wins += has_won;
+						tries++;
 
-					first_click = true;
-					x_tiles = 9;
-					y_tiles = 9;
-					mines = 10;
-					minesweeper_start(tiles, x_tiles, y_tiles, mines);
-				}
-				else if (ImGui::Button("Intermediate")) {
-					losses++;
-					tries++;
+						first_click = true;
+						x_tiles = 9;
+						y_tiles = 9;
+						mines = 10;
+						minesweeper_start(tiles, x_tiles, y_tiles, mines);
+					}
+					else if (ImGui::Button("Intermediate")) {
+						losses += has_lost;
+						wins += has_won;
+						tries++;
 
-					first_click = true;
-					x_tiles = 16;
-					y_tiles = 16;
-					mines = 40;
-					minesweeper_start(tiles, x_tiles, y_tiles, mines);
-				}
-				else if (ImGui::Button("Expert")) {
-					losses++;
-					tries++;
+						first_click = true;
+						x_tiles = 16;
+						y_tiles = 16;
+						mines = 40;
+						minesweeper_start(tiles, x_tiles, y_tiles, mines);
+					}
+					else if (ImGui::Button("Expert")) {
+						losses += has_lost;
+						wins += has_won;
+						tries++;
 
-					first_click = true;
-					x_tiles = 30;
-					y_tiles = 16;
-					mines = 99;
-					minesweeper_start(tiles, x_tiles, y_tiles, mines);
-				}
-			} else if (((tiles.size() - shown) == mines) && ImGui::BeginPopupModal("You Win!", &has_won)) {
-				// you win!
-				if (ImGui::Button("Easy")) {
-					wins++;
-					tries++;
-
-					first_click = true;
-					x_tiles = 9;
-					y_tiles = 9;
-					mines = 10;
-					minesweeper_start(tiles, x_tiles, y_tiles, mines);
-				}
-				else if (ImGui::Button("Intermediate")) {
-					wins++;
-					tries++;
-					
-					first_click = true;
-					x_tiles = 16;
-					y_tiles = 16;
-					mines = 40;
-					minesweeper_start(tiles, x_tiles, y_tiles, mines);
-				}
-				else if (ImGui::Button("Expert")) {
-					wins++;
-					tries++;
-
-					first_click = true;
-					x_tiles = 30;
-					y_tiles = 16;
-					mines = 99;
-					minesweeper_start(tiles, x_tiles, y_tiles, mines);
+						first_click = true;
+						x_tiles = 30;
+						y_tiles = 16;
+						mines = 99;
+						minesweeper_start(tiles, x_tiles, y_tiles, mines);
+					}
+					ImGui::EndPopup();
 				}
 			}
 
 			// draw lines
-			for (size_t i = 0; i < (x_tiles+1); i++) {
+			for (size_t i = 0; i < (x_tiles + 1); i++) {
 				draw_list->AddLine(ImVec2{ (float)i * tile_dim, (float)0.0f },
 					ImVec2{ (float)i * tile_dim, (float)y_tiles * tile_dim }, dark_gray, line_width);
 			}
 
-			for (size_t i = 0; i < (y_tiles+1); i++) {
-				draw_list->AddLine(ImVec2{ (float)0.0f, (float)i * tile_dim  },
+			for (size_t i = 0; i < (y_tiles + 1); i++) {
+				draw_list->AddLine(ImVec2{ (float)0.0f, (float)i * tile_dim },
 					ImVec2{ (float)x_tiles * tile_dim, (float)i * tile_dim }, dark_gray, line_width);
 			}
 
