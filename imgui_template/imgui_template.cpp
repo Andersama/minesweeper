@@ -406,6 +406,54 @@ void minesweeper_reveal(std::vector<mine>& tiles, std::vector<uint32_t>& idxs, u
 
 }
 
+size_t minesweeper_minimum_clicks(std::vector<mine>& copy, const std::vector<mine>& tiles, std::vector<uint32_t>& idxs, uint32_t x_tiles, uint32_t y_tiles) {
+	copy.clear();
+	copy.assign(tiles.data(), tiles.data() + tiles.size());
+
+	for (size_t i = 0; i < copy.size(); i++) {
+		copy[i].flags |= (uint16_t)mine_flag::hidden;
+	}
+	size_t count = 0;
+	
+	size_t shown = 0;
+	size_t mines_revealed = 0;
+	// search for a thing to click and click it, do big impact ones first
+	for (size_t i = 0; i < copy.size(); i++) {
+		if (!is_mine(copy[i]) && is_hidden(copy[i]) && !is_near_mine(copy[i])) {
+			minesweeper_reveal(copy, idxs, x_tiles, y_tiles, i);
+			count++;
+		}
+	}
+	// click on individiual hints
+	for (size_t i = 0; i < copy.size(); i++) {
+		if (!is_mine(copy[i]) && is_hidden(copy[i])) {
+			minesweeper_reveal(copy, idxs, x_tiles, y_tiles, i);
+			count++;
+		}
+	}
+	return count;
+}
+
+size_t minesweeper_start_with_minimum_clicks(std::vector<mine>& copy, std::vector<mine>& tiles, std::vector<uint32_t>& idxs, uint32_t x_tiles, uint32_t y_tiles, uint64_t mine_count, size_t minimum_clicks = 3) {
+	size_t clicks = 0;
+	std::vector<mine> best_board;
+	uint32_t max_clicks = 0;
+	uint32_t max_tries = 100;
+	do {
+		minesweeper_start(tiles, x_tiles, y_tiles, mine_count);
+		clicks = minesweeper_minimum_clicks(copy, tiles, idxs, x_tiles, y_tiles);
+		max_tries++;
+		if (clicks > max_clicks) {
+			best_board.assign(tiles.data(), tiles.data() + tiles.size());
+			max_clicks = clicks;
+		}
+	} while (clicks < minimum_clicks && max_tries < 100);
+
+	// keep the "most difficult" board generated
+	tiles.assign(best_board.data(), best_board.data() + best_board.size());
+	return max_clicks;
+}
+
 int main(int argc, char** argv)
 {
 	uint32_t window_width = 1920;
@@ -414,6 +462,7 @@ int main(int argc, char** argv)
 
 	bool show_demo_window = true;
 
+	std::vector<mine> tiles_copy;
 	std::vector<mine> tiles;
 	std::vector<uint32_t> idxs;
 
@@ -433,7 +482,9 @@ int main(int argc, char** argv)
 	tiles.reserve(x_tiles_max * y_tiles_max); //largest size
 	idxs.reserve(x_tiles_max * y_tiles_max);
 
-	minesweeper_start(tiles, x_tiles, y_tiles, mines);
+	//minesweeper_start(tiles, x_tiles, y_tiles, mines);
+	size_t clicks_required = minesweeper_start_with_minimum_clicks(tiles_copy, tiles, idxs, x_tiles, y_tiles, mines, 3);
+
 	bool first_click = true;
 	//minesweeper_start(tiles, )
 
@@ -460,6 +511,7 @@ int main(int argc, char** argv)
 		// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
 		// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 		glfwPollEvents();
+		// glfwWaitEvents();
 
 		// Start the Dear ImGui frame
 		ImGui_ImplOpenGL3_NewFrame();
@@ -574,7 +626,8 @@ int main(int argc, char** argv)
 						x_tiles = 9;
 						y_tiles = 9;
 						mines = 10;
-						minesweeper_start(tiles, x_tiles, y_tiles, mines);
+						//minesweeper_start(tiles, x_tiles, y_tiles, mines);
+						clicks_required = minesweeper_start_with_minimum_clicks(tiles_copy, tiles, idxs, x_tiles, y_tiles, mines, 3);
 					}
 					else if (ImGui::Button("Intermediate")) {
 						losses += has_lost;
@@ -585,7 +638,8 @@ int main(int argc, char** argv)
 						x_tiles = 16;
 						y_tiles = 16;
 						mines = 40;
-						minesweeper_start(tiles, x_tiles, y_tiles, mines);
+						//minesweeper_start(tiles, x_tiles, y_tiles, mines);
+						clicks_required = minesweeper_start_with_minimum_clicks(tiles_copy, tiles, idxs, x_tiles, y_tiles, mines, 6);
 					}
 					else if (ImGui::Button("Expert")) {
 						losses += has_lost;
@@ -596,7 +650,8 @@ int main(int argc, char** argv)
 						x_tiles = 30;
 						y_tiles = 16;
 						mines = 99;
-						minesweeper_start(tiles, x_tiles, y_tiles, mines);
+						//minesweeper_start(tiles, x_tiles, y_tiles, mines);
+						clicks_required = minesweeper_start_with_minimum_clicks(tiles_copy, tiles, idxs, x_tiles, y_tiles, mines, 9);
 					}
 					ImGui::EndPopup();
 				}
